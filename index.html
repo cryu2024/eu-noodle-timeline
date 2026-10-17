@@ -1,0 +1,1038 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EU 신제품 출시 타임라인 빌더</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+  :root{
+    --bg: #FAF6ED;
+    --panel: #FFFFFF;
+    --panel-2: #F3ECDD;
+    --border: #E8DFC9;
+    --border-strong: #D8CBA9;
+    --text: #2B2118;
+    --text-dim: #7C6E58;
+    --text-faint: #A79876;
+    --flame-red: #D62828;
+    --flame-red-dark: #A81E1E;
+    --flame-orange: #F4923A;
+    --flame-orange-dark: #C96F1F;
+    --holiday-tint: rgba(214, 40, 40, 0.10);
+    --grid-line: rgba(43,33,24,0.10);
+    --taskcol: 380px;
+    --gap: 16px;
+    --timelinewidth: 1200px;
+    --font-display: 'Oswald', sans-serif;
+    --font-body: 'Oswald', sans-serif;
+    --font-mono: 'Oswald', sans-serif;
+    --shadow-sm: 0 1px 2px rgba(43,33,24,0.05), 0 1px 1px rgba(43,33,24,0.04);
+    --shadow-md: 0 4px 14px rgba(43,33,24,0.07);
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background: var(--bg);
+    background-image:
+      radial-gradient(circle at 100% 0%, rgba(244,146,58,0.08), transparent 45%),
+      radial-gradient(circle at 0% 100%, rgba(214,40,40,0.05), transparent 40%);
+    color: var(--text);
+    font-family: var(--font-body);
+    padding: 32px 40px 60px;
+    min-width: 960px;
+  }
+  .eyebrow{
+    font-family: var(--font-mono); font-size: 12px; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--flame-orange-dark); margin: 0 0 6px; font-weight: 600;
+  }
+  h1{ font-family: var(--font-display); font-weight: 700; font-size: 30px; letter-spacing: 0.01em; margin: 0 0 6px; color: var(--text); }
+  .sub{ color: var(--text-dim); font-size: 14px; margin: 0 0 10px; max-width: 700px; line-height: 1.6; }
+  .basis-note{
+    display:inline-flex; align-items:center; gap:6px; font-family: var(--font-mono); font-size: 11.5px; font-weight: 600;
+    color: var(--flame-red-dark); background: rgba(214,40,40,0.08); border: 1px solid rgba(214,40,40,0.22);
+    padding: 5px 10px; border-radius: 999px; margin: 0 0 22px;
+  }
+
+  /* control bar */
+  .controls{
+    display:flex; align-items:flex-end; gap: 20px; flex-wrap: wrap;
+    background: var(--panel); border: 1px solid var(--border); border-radius: 12px;
+    padding: 18px 20px; margin-bottom: 22px; box-shadow: var(--shadow-sm);
+  }
+  .field{ display:flex; flex-direction:column; gap:6px; }
+  .field label{ font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-faint); font-weight: 700; }
+  .toggle{ display:flex; border: 1px solid var(--border-strong); border-radius: 9px; overflow:hidden; background: var(--panel-2); }
+  .toggle button{
+    font-family: var(--font-body); font-weight: 600; font-size: 13px; padding: 9px 16px;
+    background: transparent; color: var(--text-dim); border: none; cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+  }
+  .cat-toggle button.active[data-cat="면"]{ background: var(--flame-red); color: #fff; }
+  .cat-toggle button.active[data-cat="떡볶이"]{ background: var(--flame-orange); color: #fff; }
+  .toggle button:not(.active):hover{ background: #EAE1CB; }
+
+  input[type="date"]{
+    font-family: var(--font-mono); font-size: 13px; background: var(--panel-2);
+    border: 1px solid var(--border-strong); color: var(--text); border-radius: 8px;
+    padding: 8px 10px; accent-color: var(--flame-orange);
+  }
+
+  .btn{
+    font-family: var(--font-body); font-weight: 600; font-size: 13px; padding: 10px 18px;
+    border-radius: 9px; border: 1px solid var(--border-strong); background: var(--panel-2); color: var(--text);
+    cursor: pointer; display: inline-flex; align-items: center; gap: 8px;
+    transition: transform 0.1s, background 0.15s, box-shadow 0.15s;
+  }
+  .btn:hover{ background: #EAE1CB; }
+  .btn:active{ transform: scale(0.97); }
+  .btn.primary{ background: linear-gradient(180deg, var(--flame-red), var(--flame-red-dark)); border-color: var(--flame-red-dark); color: #fff; box-shadow: var(--shadow-sm); }
+  .btn.primary:hover{ filter: brightness(1.06); }
+  .btn.ghost{ background: transparent; }
+  .btn.outline{ background: var(--panel); }
+  .btn:disabled{ opacity: 0.5; cursor: default; }
+
+  .spin{
+    display:inline-block; width:13px; height:13px; border-radius:50%;
+    border: 2px solid rgba(255,255,255,0.4); border-top-color:#fff; animation: sp 0.7s linear infinite;
+  }
+  @keyframes sp{ to{ transform: rotate(360deg); } }
+
+  .error-banner{
+    background: rgba(214,40,40,0.08); border: 1px solid rgba(214,40,40,0.28); color: var(--flame-red-dark);
+    font-size: 13px; padding: 10px 14px; border-radius: 9px; margin-bottom: 18px;
+  }
+
+  /* stats */
+  .stats{ display:flex; gap: 14px; margin-bottom: 18px; flex-wrap: wrap; }
+  .stat{ background: var(--panel); border: 1px solid var(--border); border-radius: 12px; padding: 14px 20px; min-width: 150px; box-shadow: var(--shadow-sm); }
+  .stat .label{ font-size: 11px; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; font-weight:700; }
+  .stat .value{ font-family: var(--font-mono); font-size: 22px; font-weight: 600; color: var(--text); }
+  .stat .value.accent{ color: var(--flame-red); }
+  .cat-badge{ display:inline-block; font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 999px; }
+  .cat-badge.면{ background: rgba(214,40,40,0.1); color: var(--flame-red); }
+  .cat-badge.떡볶이{ background: rgba(244,146,58,0.14); color: var(--flame-orange-dark); }
+
+  /* legend + hint */
+  .legend{ display:flex; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; padding: 2px 4px; }
+  .legend-item{ display:flex; align-items:center; gap: 6px; font-size: 11.5px; color: var(--text-dim); }
+  .legend-dot{ width:9px; height:9px; border-radius:50%; flex-shrink:0; }
+  .drag-hint{ font-size: 11.5px; color: var(--text-faint); margin: 0 0 10px; padding: 0 4px; }
+
+  /* gantt */
+  .gantt-wrap{
+    background: var(--panel); border: 1px solid var(--border); border-radius: 12px;
+    padding: 20px 20px 10px; margin-bottom: 24px; overflow-x: auto; box-shadow: var(--shadow-md);
+  }
+  .export-head{ display:none; align-items:baseline; gap:10px; margin-bottom:14px; padding-bottom:12px; border-bottom: 1px solid var(--border); }
+  .export-head.show{ display:flex; }
+  .export-head h2{ font-family: var(--font-display); font-size: 17px; margin:0; color: var(--text); }
+  .export-head span{ font-family: var(--font-mono); font-size: 12px; color: var(--text-faint); }
+  #exportCapture{ display:inline-block; }
+  .gantt-empty{ color: var(--text-faint); font-size: 14px; padding: 40px 10px; text-align: center; line-height: 1.8; }
+
+  .gantt-header{ display:grid; grid-template-columns: var(--taskcol) var(--timelinewidth); gap: var(--gap); padding-bottom: 6px; margin-bottom: 4px; border-bottom: 1px solid var(--border); }
+  .header-timeline{ position:relative; }
+  .month-bands{ position:relative; height:16px; margin-bottom:3px; }
+  .month-band{
+    position:absolute; top:0; height:16px; font-family: var(--font-mono); font-size: 10.5px; font-weight:700;
+    color: var(--text-dim); border-left: 1px solid var(--border-strong); padding-left:5px; box-sizing:border-box; white-space:nowrap;
+  }
+  .ticks{ position: relative; height: 16px; }
+  .tick{ position:absolute; top:0; font-family: var(--font-mono); font-size: 10.5px; color: var(--text-faint); white-space: nowrap; }
+
+  .gantt-timeline{ position:relative; width: calc(var(--taskcol) + var(--gap) + var(--timelinewidth)); }
+  #ganttBox{ position:relative; z-index:1; width: calc(var(--taskcol) + var(--gap) + var(--timelinewidth)); }
+  .grid-overlay{ position:absolute; top:0; bottom:0; left: calc(var(--taskcol) + var(--gap)); width: var(--timelinewidth); z-index: 0; pointer-events:none; }
+  .grid-line{ position:absolute; top:0; bottom:0; width:1px; background: var(--grid-line); }
+  .holiday-block{ position:absolute; top:0; bottom:0; background: var(--holiday-tint); pointer-events: none; }
+  .holiday-strip{ position:relative; height:7px; margin-top:2px; }
+  .holiday-mark{ position:absolute; top:0; height:7px; border-radius:2px; background: var(--flame-red); opacity:0.8; cursor: help; pointer-events: auto; }
+  .holiday-mark:hover{ opacity:1; }
+
+  .gantt-row{
+    display:grid; grid-template-columns: var(--taskcol) var(--timelinewidth); gap: var(--gap);
+    align-items:center; padding: 6px 0; border-bottom: 1px solid rgba(43,33,24,0.05);
+  }
+  .gantt-row:last-child{ border-bottom:none; }
+  .task-info{ display:flex; align-items:center; gap: 7px; min-width:0; }
+  .task-name-input{
+    flex: 1 1 auto; min-width: 50px; font-size: 13px; font-weight: 600; color: var(--text);
+    font-family: var(--font-body); background: transparent; border: 1px solid transparent;
+    border-radius: 5px; padding: 2px 4px; overflow:hidden; text-overflow:ellipsis;
+  }
+  .task-name-input:hover{ background: var(--panel-2); }
+  .task-name-input:focus{ background: var(--panel-2); border-color: var(--border-strong); outline:none; }
+  .dept-dot{ width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+  .dept-chip-btn{
+    display:flex; align-items:center; gap:4px; flex-shrink:0; max-width: 130px;
+    background:none; border: 1px dashed var(--border-strong); border-radius: 7px;
+    padding: 3px 6px; cursor:pointer; overflow:hidden; white-space:nowrap;
+  }
+  .dept-chip-btn:hover{ background: var(--panel-2); }
+  .dept-chip{ font-size: 10.5px; font-weight: 700; padding: 2px 7px; border-radius: 999px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:88px; }
+  .dept-chip-more{ font-size: 10px; font-weight:700; color: var(--text-faint); flex-shrink:0; }
+  .dept-chip-empty{ font-size: 10.5px; color: var(--text-faint); white-space:nowrap; }
+  .lead-input{
+    width: 38px; flex-shrink:0; font-family: var(--font-mono); font-size: 11px;
+    background: var(--panel-2); border:1px solid var(--border-strong); border-radius: 5px;
+    color: var(--text); padding: 2px 4px; text-align:center;
+  }
+  .unit-label{ font-size: 10.5px; color: var(--text-faint); flex-shrink:0; }
+  .del-btn{
+    background:none; border:none; color: var(--text-faint); cursor:pointer; flex-shrink:0;
+    display:flex; align-items:center; padding: 3px; border-radius:5px; margin-left:auto;
+  }
+  .del-btn:hover{ color: var(--flame-red); background: rgba(214,40,40,0.08); }
+  .bar-track{ position:relative; height: 22px; }
+  .bar{
+    position:absolute; top:2px; height: 18px; border-radius: 6px;
+    display:flex; align-items:center; padding: 0 8px; font-size: 10.5px; font-weight: 700;
+    white-space:nowrap; overflow:hidden; cursor: grab; user-select:none; color: #fff;
+  }
+  .bar.manual{ outline: 2px dashed rgba(255,255,255,0.85); outline-offset: -3px; }
+  .bar.dragging{ cursor: grabbing; opacity: 0.9; box-shadow: var(--shadow-md); z-index: 5; }
+  .row-drag-handle{ cursor: grab; color: var(--text-faint); font-size: 13px; flex-shrink:0; padding: 0 2px; user-select:none; line-height:1; }
+  .row-drag-handle:hover{ color: var(--text-dim); }
+  .row-drag-handle:active{ cursor: grabbing; }
+  .gantt-row.row-dragging{ opacity: 0.45; background: var(--panel-2); border-radius: 8px; }
+
+  /* add task form */
+  .add-form{
+    display:flex; gap: 12px; align-items:flex-end; flex-wrap:wrap;
+    background: var(--panel); border: 1px solid var(--border); border-radius: 12px;
+    padding: 16px 20px; box-shadow: var(--shadow-sm); position: relative;
+  }
+  .add-form input[type="text"], .add-form input[type="number"]{
+    font-family: var(--font-body); font-size: 13px; background: var(--panel-2);
+    border: 1px solid var(--border-strong); color: var(--text); border-radius: 7px; padding: 8px 10px;
+  }
+  .add-form input[type="text"]{ width: 230px; }
+  .add-form input[type="number"]{ width: 70px; }
+
+  .dept-picker-btn{
+    display:flex; align-items:center; gap:6px; flex-wrap:wrap; max-width: 260px; min-height: 37px;
+    font-family: var(--font-body); font-size: 12.5px; background: var(--panel-2);
+    border: 1px solid var(--border-strong); color: var(--text-dim); border-radius: 7px; padding: 6px 10px; cursor:pointer;
+  }
+  .dept-picker-btn:hover{ background: #EAE1CB; }
+  .dept-picker-btn .ph{ color: var(--text-faint); }
+
+  /* dept popover */
+  .dept-popover{
+    position: fixed; z-index: 50; background: var(--panel); border: 1px solid var(--border-strong);
+    border-radius: 10px; box-shadow: var(--shadow-md); padding: 10px; display:none;
+    flex-direction: column; min-width: 220px; max-width: 250px;
+  }
+  .dept-popover.open{ display:flex; }
+  .dept-popover-title{ font-size: 10.5px; text-transform:uppercase; letter-spacing:0.06em; color: var(--text-faint); font-weight:700; margin: 0 0 6px 2px; flex-shrink:0; }
+  .dept-popover-list{ overflow-y:auto; flex: 1 1 auto; min-height: 40px; }
+  .dept-opt{ display:flex; align-items:center; gap: 8px; padding: 6px 6px; border-radius: 6px; font-size: 12.5px; cursor:pointer; color: var(--text); }
+  .dept-opt:hover{ background: var(--panel-2); }
+  .dept-opt input{ accent-color: var(--flame-red); flex-shrink:0; }
+  .dept-opt .swatch{ width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+  .dept-popover-add{ display:flex; gap: 6px; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); flex-shrink: 0; }
+  .dept-popover-add input{ flex: 1; min-width:0; font-family: var(--font-body); font-size: 12px; background: var(--panel-2); border: 1px solid var(--border-strong); color: var(--text); border-radius: 6px; padding: 5px 7px; }
+  .dept-popover-add button{ font-size: 11.5px; font-weight: 700; padding: 5px 9px; border-radius: 6px; border: 1px solid var(--border-strong); background: var(--panel-2); color: var(--text); cursor:pointer; }
+  .dept-popover-add button:hover{ background: #EAE1CB; }
+</style>
+</head>
+<body>
+
+<p class="eyebrow">Samyang EU launch planning</p>
+<h1>불닭 유럽 신제품 출시 타임라인</h1>
+<p class="sub">카테고리를 선택하고 기본 타임라인을 불러오거나, 직접 태스크를 추가·수정·삭제하며 영업일(주말·공휴일 제외) 기준 간트차트를 확인하세요. 바를 드래그해 겹치거나 이동할 수 있습니다.</p>
+<div class="basis-note">📌 신규 배합 개발 기준</div>
+
+<div class="controls">
+  <div class="field">
+    <label>카테고리</label>
+    <div class="toggle cat-toggle" id="catToggle">
+      <button data-cat="면" class="active">면</button>
+      <button data-cat="떡볶이">떡볶이</button>
+    </div>
+  </div>
+  <div class="field">
+    <label>프로젝트 시작일</label>
+    <input type="date" id="startDate">
+  </div>
+  <button class="btn primary" id="loadTplBtn">📋 기본 타임라인 불러오기</button>
+  <button class="btn ghost" id="resetBtn">초기화</button>
+  <button class="btn outline" id="saveImgBtn">⬇ 이미지로 저장</button>
+</div>
+
+<div id="errorBox"></div>
+
+<div class="stats" id="statsBox"></div>
+
+<div class="legend" id="legendBox"></div>
+<p class="drag-hint">💡 타임라인 바를 드래그하면 자유롭게 겹치거나 이동할 수 있어요 (더블클릭 시 자동 배치로 복귀) · ⠿ 핸들을 드래그하면 태스크 순서를 바꿀 수 있어요 · 빨간 음영은 공휴일이며 마우스를 올리면 명칭이 표시됩니다.</p>
+
+<div class="gantt-wrap" id="ganttCard">
+  <div id="exportCapture">
+    <div class="export-head" id="exportHead"></div>
+    <div class="gantt-timeline">
+      <div class="grid-overlay" id="gridOverlay"></div>
+      <div id="ganttBox"></div>
+    </div>
+  </div>
+</div>
+
+<div class="add-form">
+  <div class="field">
+    <label>태스크명</label>
+    <input type="text" id="newName" placeholder="예: EU 식품 라벨링 검토">
+  </div>
+  <div class="field">
+    <label>담당 부서 (다중 선택)</label>
+    <button type="button" class="dept-picker-btn" id="newDeptBtn"><span class="ph">부서 선택 ▾</span></button>
+  </div>
+  <div class="field">
+    <label>리드타임(영업일)</label>
+    <input type="number" id="newLead" min="1" value="7">
+  </div>
+  <button class="btn" id="addBtn">+ 태스크 추가</button>
+</div>
+
+<div class="dept-popover" id="deptPopover">
+  <div class="dept-popover-title">담당 부서 선택</div>
+  <div class="dept-popover-list" id="deptPopoverList"></div>
+  <div class="dept-popover-add">
+    <input type="text" id="deptCustomInput" placeholder="직접 입력">
+    <button type="button" id="deptCustomAddBtn">추가</button>
+  </div>
+</div>
+
+<script>
+/* ============ 부서 & 색상 ============ */
+const BASE_DEPARTMENTS = [
+  "QI","면생산","스프생산","법인QA","법인MKT","법인Sales","법인SCM","MKT","법인운영","CTM",
+  "품질보증","패키징","연구","연구소","AL","QA","생산원가","포장재구매","경영관리","디자인","PPC","OEM","구매"
+];
+const DEPT_COLORS = {
+  "QI": "#2F8F82", "면생산": "#D9713C", "스프생산": "#C9922E", "법인QA": "#5E8C4E",
+  "법인MKT": "#B24C79", "법인Sales": "#3E76A8", "법인SCM": "#7A5FB5", "MKT": "#9AA83E",
+  "법인운영": "#4C7A87", "CTM": "#A85C3E", "품질보증": "#3E9AA8", "패키징": "#8C6E4C",
+  "연구": "#6E4C8C", "연구소": "#5B3E8C", "AL": "#3E8C6E", "QA": "#8C3E5B",
+  "생산원가": "#8C7A3E", "포장재구매": "#3E5B8C", "경영관리": "#6E3E4C", "디자인": "#B25CD9",
+  "PPC": "#5C8C3E", "OEM": "#C97A3E", "구매": "#4C6E3E"
+};
+const FALLBACK_COLORS = ["#8A8478","#5E7FA3","#A97654","#5E9E8C","#9E6B8C","#7A9E5E"];
+function deptColor(name){
+  if(DEPT_COLORS[name]) return DEPT_COLORS[name];
+  let h = 0;
+  for(let i=0;i<name.length;i++){ h = (h*31 + name.charCodeAt(i)) % 997; }
+  return FALLBACK_COLORS[h % FALLBACK_COLORS.length];
+}
+const TRASH_SVG = `<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></svg>`;
+
+/* ============ 한국 공휴일 (2026~2030, 대체공휴일 포함) — 명칭 포함 ============ */
+const KOREA_HOLIDAYS = {
+  "2026-01-01":"신정","2026-02-16":"설날 연휴","2026-02-17":"설날","2026-02-18":"설날 연휴",
+  "2026-03-01":"삼일절","2026-03-02":"대체공휴일(삼일절)","2026-05-01":"노동절","2026-05-05":"어린이날",
+  "2026-05-24":"부처님오신날","2026-05-25":"대체공휴일(부처님오신날)","2026-06-03":"전국동시지방선거",
+  "2026-06-06":"현충일","2026-07-17":"제헌절","2026-08-15":"광복절","2026-08-17":"대체공휴일(광복절)",
+  "2026-09-24":"추석 연휴","2026-09-25":"추석","2026-09-26":"추석 연휴","2026-10-03":"개천절",
+  "2026-10-05":"대체공휴일(개천절)","2026-10-09":"한글날","2026-12-25":"성탄절",
+  "2027-01-01":"신정","2027-02-06":"설날 연휴","2027-02-07":"설날","2027-02-08":"설날 연휴",
+  "2027-02-09":"대체공휴일(설날)","2027-03-01":"삼일절","2027-05-01":"노동절","2027-05-05":"어린이날",
+  "2027-05-13":"부처님오신날","2027-06-06":"현충일","2027-07-17":"제헌절","2027-08-15":"광복절",
+  "2027-08-16":"대체공휴일(광복절)","2027-09-14":"추석 연휴","2027-09-15":"추석","2027-09-16":"추석 연휴",
+  "2027-10-03":"개천절","2027-10-04":"대체공휴일(개천절)","2027-10-09":"한글날","2027-10-11":"대체공휴일(한글날)",
+  "2027-12-25":"성탄절","2027-12-27":"대체공휴일(성탄절)",
+  "2028-01-01":"신정","2028-01-26":"설날 연휴","2028-01-27":"설날","2028-01-28":"설날 연휴",
+  "2028-03-01":"삼일절","2028-04-12":"국회의원선거","2028-05-01":"노동절","2028-05-02":"부처님오신날",
+  "2028-05-05":"어린이날","2028-06-06":"현충일","2028-07-17":"제헌절","2028-08-15":"광복절",
+  "2028-10-02":"추석 연휴","2028-10-03":"추석·개천절","2028-10-04":"추석 연휴","2028-10-05":"대체공휴일(개천절)",
+  "2028-10-09":"한글날","2028-12-25":"성탄절",
+  "2029-01-01":"신정","2029-02-12":"설날 연휴","2029-02-13":"설날","2029-02-14":"설날 연휴",
+  "2029-03-01":"삼일절","2029-05-01":"노동절","2029-05-05":"어린이날","2029-05-07":"대체공휴일(어린이날)",
+  "2029-05-20":"부처님오신날","2029-05-21":"대체공휴일(부처님오신날)","2029-06-06":"현충일","2029-07-17":"제헌절",
+  "2029-08-15":"광복절","2029-09-21":"추석 연휴","2029-09-22":"추석","2029-09-23":"추석 연휴",
+  "2029-09-24":"대체공휴일(추석)","2029-10-03":"개천절","2029-10-09":"한글날","2029-12-25":"성탄절",
+  "2030-01-01":"신정","2030-02-02":"설날 연휴","2030-02-03":"설날","2030-02-04":"설날 연휴",
+  "2030-02-05":"대체공휴일(설날)","2030-03-01":"삼일절","2030-05-01":"노동절","2030-05-05":"어린이날",
+  "2030-05-06":"대체공휴일(어린이날)","2030-05-09":"부처님오신날","2030-06-06":"현충일","2030-07-17":"제헌절",
+  "2030-08-15":"광복절","2030-09-11":"추석 연휴","2030-09-12":"추석","2030-09-13":"추석 연휴",
+  "2030-10-03":"개천절","2030-10-09":"한글날","2030-12-25":"성탄절"
+};
+
+const PX_PER_DAY = 8;
+const TASKCOL_PX = 380;
+const GAP_PX = 16;
+const MONTH_ABBR = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+function isoOf(d){
+  const y = d.getFullYear(), m = String(d.getMonth()+1).padStart(2,"0"), day = String(d.getDate()).padStart(2,"0");
+  return `${y}-${m}-${day}`;
+}
+function isHoliday(d){ return Object.prototype.hasOwnProperty.call(KOREA_HOLIDAYS, isoOf(d)); }
+function holidayName(d){ return KOREA_HOLIDAYS[isoOf(d)] || ""; }
+function isWeekend(d){ const dow = d.getDay(); return dow === 0 || dow === 6; }
+// 기본 캘린더: 주말 + 한국 공휴일 제외
+function isBusinessDay(d){
+  if(isWeekend(d)) return false;
+  if(isHoliday(d)) return false;
+  return true;
+}
+// QA 단독 담당 태스크용 캘린더: 한국 공휴일과 무관하므로 주말만 제외
+function isBusinessDayWeekendOnly(d){
+  return !isWeekend(d);
+}
+// 태스크의 담당부서가 QA 단독인 경우, 한국 공휴일을 무시하는 캘린더를 사용
+function taskCalendar(t){
+  const depts = t.departments || [];
+  const isQASolo = depts.length === 1 && depts[0] === "QA";
+  return isQASolo ? isBusinessDayWeekendOnly : isBusinessDay;
+}
+function nextOrSameBusinessDay(d, isValid){
+  isValid = isValid || isBusinessDay;
+  const r = new Date(d);
+  while(!isValid(r)) r.setDate(r.getDate()+1);
+  return r;
+}
+function businessDayAt(effectiveStart, offset, isValid){
+  isValid = isValid || isBusinessDay;
+  const d = new Date(effectiveStart);
+  let count = 0;
+  while(count < offset){
+    d.setDate(d.getDate()+1);
+    if(isValid(d)) count++;
+  }
+  return d;
+}
+// fromDate를 포함해 count번째로 유효한 영업일을 반환 (count=0이면 fromDate 자신, 단 fromDate가 유효할 때)
+function advanceBusinessDays(fromDate, count, isValid){
+  isValid = isValid || isBusinessDay;
+  let d = new Date(fromDate);
+  let n = 0;
+  while(n < count){
+    d.setDate(d.getDate()+1);
+    if(isValid(d)) n++;
+  }
+  return d;
+}
+function addDays(base, n){ const d = new Date(base); d.setDate(d.getDate()+n); return d; }
+function fmtDot(d){
+  const y = d.getFullYear(), m = String(d.getMonth()+1).padStart(2,"0"), day = String(d.getDate()).padStart(2,"0");
+  return `${y}.${m}.${day}`;
+}
+const DOW_KR = ["일","월","화","수","목","금","토"];
+function fmtDotWithDow(d){
+  return `${fmtDot(d)}(${DOW_KR[d.getDay()]})`;
+}
+function fmtShort(d){
+  return `${MONTH_ABBR[d.getMonth()]} ${d.getDate()}`;
+}
+function calendarDayDiff(a, b){
+  const bb = new Date(b); bb.setHours(0,0,0,0);
+  const aa = new Date(a); aa.setHours(0,0,0,0);
+  return Math.round((bb - aa) / 86400000);
+}
+function bizDaysBetweenInclusive(start, end){
+  let d = new Date(start); d.setHours(0,0,0,0);
+  const e = new Date(end); e.setHours(0,0,0,0);
+  let count = 0;
+  while(d <= e){
+    if(isBusinessDay(d)) count++;
+    d.setDate(d.getDate()+1);
+  }
+  return count;
+}
+
+/* ============ 기본 타임라인 템플릿 (신규 배합 개발 기준, 영업일, 담당부서) ============ */
+const TEMPLATES = {
+  "면": [
+    ["배합개발",20,["연구소"]],
+    ["마스터 작성",10,["연구소"]],
+    ["성분검토",20,["AL","QA"]],
+    ["확정원가 수령",20,["연구소","생산원가","포장재구매"]],
+    ["손익검토",15,["MKT","경영관리"]],
+    ["도안의뢰서",10,["QA"],{startWith:"확정원가 수령"}],
+    ["1차 디자인",10,["디자인"]],
+    ["번역검수",5,["QA"]],
+    ["서티",35,["QA"]],
+    ["거래선검토",20,["QA"]],
+    ["2차 디자인 반영",5,["디자인"]],
+    ["PLM",8,["디자인"]],
+    ["디자인 출고",1,["디자인"]],
+    ["부자재입고",20,["포장재구매"]],
+    ["스프 본생산",5,["스프생산","PPC"]],
+    ["안전성 검사",10,["연구소","QI","품질보증"]],
+    ["면 본생산",5,["면생산","PPC"]],
+    ["완제품 출고 검사",7,["품질보증"]],
+    ["부산항 이동",10,["법인운영"]],
+    ["선적 및 거래선 창고 도착 (EU 기준)",50,["법인운영"]],
+    ["온셸프",5,[]]
+  ],
+  "떡볶이": [
+    ["배합개발",20,["연구소"]],
+    ["마스터 작성",10,["연구소"]],
+    ["성분검토",20,["AL","QA"]],
+    ["수출적합성검토",10,["연구"]],
+    ["확정원가 수령",20,["연구소","생산원가","포장재구매"]],
+    ["손익검토",15,["MKT","경영관리"]],
+    ["도안의뢰서",10,["QA"],{startWith:"확정원가 수령"}],
+    ["1차 디자인",10,["디자인"]],
+    ["번역검수",5,["QA"]],
+    ["서티",35,["QA"]],
+    ["거래선검토",20,["QA"]],
+    ["2차 디자인 반영",5,["디자인"]],
+    ["PLM",8,["디자인"]],
+    ["디자인 출고",1,["디자인"]],
+    ["부자재입고",30,["포장재구매"]],
+    ["반제품 본생산",5,[]],
+    ["안전성 검사",10,["연구소","QI","품질보증"]],
+    ["완제품 본생산",5,["OEM"]],
+    ["완제품 출고 검사",10,["OEM"]],
+    ["원주센터 입고",5,[]],
+    ["부산항 이동",10,["법인운영"]],
+    ["선적 및 거래선 창고 도착 (EU 기준)",50,["법인운영"]],
+    ["온셸프",5,[]]
+  ]
+};
+
+/* ============ 상태 ============ */
+const state = {
+  category: "면",
+  startDate: new Date().toISOString().slice(0,10),
+  tasks: [],
+  error: null,
+  newTaskDepts: [],
+  departments: BASE_DEPARTMENTS.slice()
+};
+
+document.getElementById("startDate").value = state.startDate;
+
+/* ============ 스케줄 계산 (영업일 기준, 태스크별 캘린더/수동 배치 지원) ============ */
+function schedule(){
+  const effectiveStart = nextOrSameBusinessDay(new Date(state.startDate + "T00:00:00"));
+  let cursor = new Date(effectiveStart);
+  const startDateByName = {};  // 병행(startWithName) 조회용: 각 태스크의 시작일
+  const afterDateByName = {};  // 순차(startAfterName)/기본 체인 조회용: 각 태스크가 끝난 다음날
+  const sched = state.tasks.map(t => {
+    const lead = Math.max(1, t.leadTimeDays);
+    const calFn = taskCalendar(t);
+    let startD;
+    let isManual = false;
+    if(t.manualStartDate){
+      startD = nextOrSameBusinessDay(new Date(t.manualStartDate + "T00:00:00"), calFn);
+      isManual = true;
+    } else if(t.startWithName && startDateByName[t.startWithName]){
+      // 특정 태스크와 같은 시점에 시작 (병행). 그 태스크가 삭제되지 않는 한, 위치가 바뀌어도 항상 함께 따라감
+      startD = nextOrSameBusinessDay(new Date(startDateByName[t.startWithName]), calFn);
+    } else if(t.startAfterName && afterDateByName[t.startAfterName]){
+      startD = nextOrSameBusinessDay(new Date(afterDateByName[t.startAfterName]), calFn);
+    } else {
+      startD = nextOrSameBusinessDay(new Date(cursor), calFn);
+    }
+    const endD = advanceBusinessDays(startD, lead - 1, calFn);
+    startDateByName[t.name] = new Date(startD);
+    const nextDay = new Date(endD);
+    nextDay.setDate(nextDay.getDate() + 1);
+    afterDateByName[t.name] = nextDay;
+    if(!isManual){
+      cursor = new Date(nextDay);
+    }
+    return { ...t, startDate: startD, endDate: endD };
+  });
+  return { effectiveStart, sched };
+}
+function computeTotalDays(effectiveStart, sched){
+  if(sched.length === 0) return 1;
+  let maxEnd = sched[0].endDate;
+  sched.forEach(t => { if(t.endDate > maxEnd) maxEnd = t.endDate; });
+  return Math.max(7, calendarDayDiff(effectiveStart, maxEnd) + 1);
+}
+
+/* ============ 통계 ============ */
+function renderStats(){
+  const { effectiveStart, sched } = schedule();
+  let launch = "-", spanDays = 0;
+  if(sched.length){
+    let maxEnd = sched[0].endDate;
+    sched.forEach(t => { if(t.endDate > maxEnd) maxEnd = t.endDate; });
+    launch = fmtDot(maxEnd);
+    spanDays = bizDaysBetweenInclusive(effectiveStart, maxEnd);
+  }
+  document.getElementById("statsBox").innerHTML = `
+    <div class="stat"><div class="label">카테고리</div><div class="value"><span class="cat-badge ${state.category}">${state.category}</span></div></div>
+    <div class="stat"><div class="label">총 태스크 수</div><div class="value">${sched.length}개</div></div>
+    <div class="stat"><div class="label">전체 프로젝트 영업일</div><div class="value accent">${spanDays}일</div></div>
+    <div class="stat"><div class="label">예상 출시일</div><div class="value accent">${launch}</div></div>
+  `;
+  document.getElementById("exportHead").innerHTML = sched.length ? `
+    <h2>불닭 유럽 신제품 출시 타임라인</h2>
+    <span>${state.category} · 신규 배합 개발 기준 · 시작 ${fmtDot(effectiveStart)} · 출시 예상 ${launch}</span>
+  ` : "";
+}
+
+/* ============ 부서 범례 ============ */
+function renderLegend(){
+  const used = new Set();
+  state.tasks.forEach(t => (t.departments||[]).forEach(d => used.add(d)));
+  document.getElementById("legendBox").innerHTML = Array.from(used).map(d => `
+    <span class="legend-item"><span class="legend-dot" style="background:${deptColor(d)}"></span>${d}</span>
+  `).join("");
+}
+
+/* ============ 월 구간 계산 ============ */
+function buildMonthBands(effectiveStart, totalDays){
+  const bands = [];
+  let d = 0;
+  while(d < totalDays){
+    const date = addDays(effectiveStart, d);
+    const y = date.getFullYear(), m = date.getMonth();
+    const nextMonthStart = new Date(y, m+1, 1);
+    const daysToNext = calendarDayDiff(date, nextMonthStart);
+    const segEnd = Math.min(totalDays, d + daysToNext);
+    bands.push({ start: d, end: segEnd, label: `${MONTH_ABBR[m]} ${y}` });
+    d = segEnd;
+  }
+  return bands;
+}
+
+/* ============ 간트 렌더 ============ */
+function renderGantt(){
+  const box = document.getElementById("ganttBox");
+  const overlay = document.getElementById("gridOverlay");
+
+  const { effectiveStart, sched } = schedule();
+
+  if(sched.length === 0){
+    overlay.innerHTML = "";
+    box.innerHTML = `<div class="gantt-empty">아직 태스크가 없습니다.<br>카테고리를 선택하고 "기본 타임라인 불러오기"를 누르거나, 아래에서 태스크를 직접 추가하세요.</div>`;
+    return;
+  }
+
+  const totalDays = Math.max(60, computeTotalDays(effectiveStart, sched));
+  document.documentElement.style.setProperty("--timelinewidth", (totalDays * PX_PER_DAY) + "px");
+
+  // 공휴일 강조 블록(배경, 장식용) + 공휴일 스트립(항상 hover 가능한 상단 마커)
+  let holidayHtml = "";
+  let holidayStripHtml = "";
+  for(let d=0; d<totalDays; d++){
+    const day = addDays(effectiveStart, d);
+    if(isHoliday(day)){
+      holidayHtml += `<div class="holiday-block" style="left:${d*PX_PER_DAY}px; width:${PX_PER_DAY}px"></div>`;
+      holidayStripHtml += `<div class="holiday-mark" style="left:${d*PX_PER_DAY}px; width:${PX_PER_DAY}px" title="${fmtDotWithDow(day)} ${holidayName(day)}"></div>`;
+    }
+  }
+  // 주간 그리드 라인 (매주 월요일)
+  let monday = new Date(effectiveStart);
+  const dow = monday.getDay();
+  monday.setDate(monday.getDate() + ((dow === 0) ? -6 : (1 - dow)));
+  let gridHtml = "";
+  for(let d = calendarDayDiff(effectiveStart, monday); d <= totalDays; d += 7){
+    if(d < 0) continue;
+    gridHtml += `<div class="grid-line" style="left:${d*PX_PER_DAY}px"></div>`;
+  }
+  overlay.innerHTML = holidayHtml + gridHtml;
+
+  // 월 밴드 + 주간 눈금 (헤더) — 전체 범위에 대해 생성
+  const monthBands = buildMonthBands(effectiveStart, totalDays);
+  let monthHtml = "";
+  monthBands.forEach(b => {
+    monthHtml += `<div class="month-band" style="left:${b.start*PX_PER_DAY}px; width:${(b.end-b.start)*PX_PER_DAY}px">${b.label}</div>`;
+  });
+  let ticksHtml = "";
+  for(let d = calendarDayDiff(effectiveStart, monday); d <= totalDays; d += 7){
+    if(d < 0) continue;
+    const date = addDays(effectiveStart, d);
+    ticksHtml += `<span class="tick" style="left:${d*PX_PER_DAY}px">${fmtShort(date)}</span>`;
+  }
+
+  let rows = "";
+  sched.forEach(t => {
+    const depts = t.departments || [];
+    const primaryColor = depts.length ? deptColor(depts[0]) : "#9A9084";
+    const offsetStart = calendarDayDiff(effectiveStart, t.startDate);
+    const offsetEnd = calendarDayDiff(effectiveStart, t.endDate) + 1;
+    const leftPx = offsetStart * PX_PER_DAY;
+    const widthPx = Math.max((offsetEnd - offsetStart) * PX_PER_DAY, 22);
+    const isQASoloCal = taskCalendar(t) === isBusinessDayWeekendOnly;
+    const tip = `${fmtDot(t.startDate)}~${fmtDot(t.endDate)} (영업일 ${t.leadTimeDays}일${isQASoloCal ? ", 공휴일 무관·주말만 제외" : ""})`;
+    const chips = depts.length
+      ? `<span class="dept-chip" style="background:${deptColor(depts[0])}22; color:${deptColor(depts[0])}">${depts[0]}</span>${depts.length>1 ? `<span class="dept-chip-more">+${depts.length-1}</span>` : ""}`
+      : `<span class="dept-chip-empty">부서 미지정</span>`;
+    const manualClass = t.manualStartDate ? " manual" : "";
+
+    rows += `
+      <div class="gantt-row" data-rowid="${t.id}">
+        <div class="task-info">
+          <span class="row-drag-handle" data-rowdrag="${t.id}" title="드래그해서 순서 변경">⠿</span>
+          <span class="dept-dot" style="background:${primaryColor}"></span>
+          <input type="text" class="task-name-input" data-name="${t.id}" value="${t.name}" title="클릭해서 이름 수정">
+          <button class="dept-chip-btn" data-editdept="${t.id}">${chips}</button>
+          <input type="number" class="lead-input" data-lead="${t.id}" value="${t.leadTimeDays}" min="1">
+          <span class="unit-label">WD</span>
+          <button class="del-btn" data-del="${t.id}" title="삭제">${TRASH_SVG}</button>
+        </div>
+        <div class="bar-track">
+          <div class="bar${manualClass}" data-task="${t.id}" style="left:${leftPx}px; width:${widthPx}px; background:${primaryColor};" title="${tip}">
+            ${t.name}
+          </div>
+        </div>
+      </div>
+    `;
+  });
+
+  box.innerHTML = `
+    <div class="gantt-header">
+      <div></div>
+      <div class="header-timeline">
+        <div class="month-bands">${monthHtml}</div>
+        <div class="ticks">${ticksHtml}</div>
+        <div class="holiday-strip">${holidayStripHtml}</div>
+      </div>
+    </div>
+    ${rows}
+  `;
+
+  box.querySelectorAll("[data-del]").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const deletedId = btn.dataset.del;
+      const deletedTask = state.tasks.find(t => t.id === deletedId);
+      if(deletedTask){
+        // 이 태스크를 기준으로 병행/순차 배치된(startWithName·startAfterName) 태스크가 있다면,
+        // 그 기준 태스크가 삭제될 때만 현재 위치를 고정 (다른 앞 태스크 삭제는 정상적으로 함께 당겨짐)
+        const { sched: currentSched } = schedule();
+        state.tasks.forEach(t => {
+          const refName = t.startWithName || t.startAfterName;
+          if(refName === deletedTask.name && !t.manualStartDate){
+            const schedEntry = currentSched.find(s => s.id === t.id);
+            if(schedEntry){
+              t.manualStartDate = isoOf(schedEntry.startDate);
+              t.startAfterName = null;
+              t.startWithName = null;
+            }
+          }
+        });
+      }
+      state.tasks = state.tasks.filter(t => t.id !== deletedId);
+      renderAll();
+    });
+  });
+  box.querySelectorAll("[data-name]").forEach(inp => {
+    inp.addEventListener("change", () => {
+      const t = state.tasks.find(t => t.id === inp.dataset.name);
+      if(!t) return;
+      const newName = inp.value.trim();
+      if(!newName){ inp.value = t.name; return; }
+      const oldName = t.name;
+      if(newName !== oldName){
+        state.tasks.forEach(other => {
+          if(other.startAfterName === oldName) other.startAfterName = newName;
+          if(other.startWithName === oldName) other.startWithName = newName;
+        });
+        t.name = newName;
+      }
+      renderAll();
+    });
+  });
+  box.querySelectorAll("[data-lead]").forEach(inp => {
+    inp.addEventListener("change", () => {
+      const val = Math.max(1, parseInt(inp.value) || 1);
+      const t = state.tasks.find(t => t.id === inp.dataset.lead);
+      if(t) t.leadTimeDays = val;
+      renderAll();
+    });
+  });
+  box.querySelectorAll("[data-editdept]").forEach(btn => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      openDeptPopover(btn, "task", btn.dataset.editdept);
+    });
+  });
+  attachDragHandlers();
+  attachRowDragHandlers();
+}
+
+function renderError(){
+  const box = document.getElementById("errorBox");
+  box.innerHTML = state.error ? `<div class="error-banner">${state.error}</div>` : "";
+}
+
+function renderAll(){
+  renderStats();
+  renderGantt();
+  renderLegend();
+  renderError();
+}
+
+/* ============ 바 드래그 (겹침/이동 지원) ============ */
+let dragCtx = null;
+function attachDragHandlers(){
+  document.querySelectorAll(".bar").forEach(barEl => {
+    barEl.addEventListener("mousedown", (e) => {
+      e.preventDefault();
+      const track = barEl.parentElement;
+      const trackRect = track.getBoundingClientRect();
+      dragCtx = {
+        taskId: barEl.dataset.task,
+        trackWidth: trackRect.width,
+        startClientX: e.clientX,
+        startLeftPx: parseFloat(barEl.style.left) || 0,
+        widthPx: parseFloat(barEl.style.width) || 0,
+        barEl,
+        currentLeftPx: null
+      };
+      barEl.classList.add("dragging");
+    });
+    barEl.addEventListener("dblclick", () => {
+      const t = state.tasks.find(t => t.id === barEl.dataset.task);
+      if(t){ t.manualStartDate = null; renderAll(); }
+    });
+  });
+}
+document.addEventListener("mousemove", (e) => {
+  if(!dragCtx) return;
+  const deltaPx = e.clientX - dragCtx.startClientX;
+  let newLeftPx = dragCtx.startLeftPx + deltaPx;
+  newLeftPx = Math.max(0, Math.min(dragCtx.trackWidth - dragCtx.widthPx, newLeftPx));
+  dragCtx.barEl.style.left = newLeftPx + "px";
+  dragCtx.currentLeftPx = newLeftPx;
+});
+document.addEventListener("mouseup", () => {
+  if(!dragCtx) return;
+  const { taskId, currentLeftPx, barEl } = dragCtx;
+  barEl.classList.remove("dragging");
+  if(currentLeftPx != null){
+    const { effectiveStart } = schedule();
+    const dayOffset = Math.round(currentLeftPx / PX_PER_DAY);
+    const targetDate = addDays(effectiveStart, dayOffset);
+    const t = state.tasks.find(t => t.id === taskId);
+    if(t){
+      const snapped = nextOrSameBusinessDay(targetDate, taskCalendar(t));
+      t.manualStartDate = isoOf(snapped);
+    }
+  }
+  dragCtx = null;
+  renderAll();
+});
+
+/* ============ 태스크 순서 드래그 (세로 재정렬) ============ */
+let rowDragCtx = null;
+function attachRowDragHandlers(){
+  document.querySelectorAll("[data-rowdrag]").forEach(handle => {
+    handle.addEventListener("mousedown", (e) => {
+      e.preventDefault();
+      rowDragCtx = { taskId: handle.dataset.rowdrag };
+      const row = handle.closest(".gantt-row");
+      if(row) row.classList.add("row-dragging");
+    });
+  });
+}
+document.addEventListener("mousemove", (e) => {
+  if(!rowDragCtx) return;
+  const rows = Array.from(document.querySelectorAll(".gantt-row[data-rowid]"));
+  if(rows.length === 0) return;
+  let closestIdx = 0, closestDist = Infinity;
+  rows.forEach((r, idx) => {
+    const rect = r.getBoundingClientRect();
+    const center = rect.top + rect.height/2;
+    const dist = Math.abs(e.clientY - center);
+    if(dist < closestDist){ closestDist = dist; closestIdx = idx; }
+  });
+  const draggedId = rowDragCtx.taskId;
+  const fromIdx = state.tasks.findIndex(t => t.id === draggedId);
+  if(fromIdx !== -1 && fromIdx !== closestIdx){
+    const [item] = state.tasks.splice(fromIdx, 1);
+    state.tasks.splice(closestIdx, 0, item);
+    renderAll();
+    const newRow = document.querySelector(`.gantt-row[data-rowid="${draggedId}"]`);
+    if(newRow) newRow.classList.add("row-dragging");
+  }
+});
+document.addEventListener("mouseup", () => {
+  if(!rowDragCtx) return;
+  rowDragCtx = null;
+  document.querySelectorAll(".gantt-row.row-dragging").forEach(r => r.classList.remove("row-dragging"));
+});
+
+/* ============ 부서 다중선택 팝오버 ============ */
+const popover = document.getElementById("deptPopover");
+const popoverList = document.getElementById("deptPopoverList");
+let popoverTarget = null;
+
+function currentSelection(){
+  if(!popoverTarget) return [];
+  if(popoverTarget.kind === "new") return state.newTaskDepts;
+  const t = state.tasks.find(t => t.id === popoverTarget.taskId);
+  return t ? (t.departments || []) : [];
+}
+function setSelection(list){
+  if(!popoverTarget) return;
+  if(popoverTarget.kind === "new"){
+    state.newTaskDepts = list;
+    renderNewDeptBtn();
+  } else {
+    const t = state.tasks.find(t => t.id === popoverTarget.taskId);
+    if(t){ t.departments = list; renderAll(); }
+  }
+}
+function renderPopoverList(){
+  const sel = currentSelection();
+  popoverList.innerHTML = state.departments.map(d => `
+    <label class="dept-opt">
+      <input type="checkbox" value="${d}" ${sel.includes(d) ? "checked" : ""}>
+      <span class="swatch" style="background:${deptColor(d)}"></span>${d}
+    </label>
+  `).join("");
+  popoverList.querySelectorAll("input[type=checkbox]").forEach(cb => {
+    cb.addEventListener("change", () => {
+      let sel = currentSelection().slice();
+      if(cb.checked){ if(!sel.includes(cb.value)) sel.push(cb.value); }
+      else { sel = sel.filter(v => v !== cb.value); }
+      setSelection(sel);
+    });
+  });
+}
+function openDeptPopover(anchorEl, kind, taskId){
+  popoverTarget = { kind, taskId };
+  renderPopoverList();
+  const rect = anchorEl.getBoundingClientRect();
+  const vh = window.innerHeight, vw = window.innerWidth;
+  const spaceBelow = vh - rect.bottom - 12;
+  const spaceAbove = rect.top - 12;
+  popover.style.left = Math.max(8, Math.min(rect.left, vw - 260)) + "px";
+  if(spaceBelow >= 160 || spaceBelow >= spaceAbove){
+    popover.style.top = (rect.bottom + 6) + "px";
+    popover.style.bottom = "auto";
+    popover.style.maxHeight = Math.max(140, Math.min(spaceBelow, 360)) + "px";
+  } else {
+    popover.style.bottom = (vh - rect.top + 6) + "px";
+    popover.style.top = "auto";
+    popover.style.maxHeight = Math.max(140, Math.min(spaceAbove, 360)) + "px";
+  }
+  popover.classList.add("open");
+}
+function closeDeptPopover(){
+  popover.classList.remove("open");
+  popoverTarget = null;
+}
+document.addEventListener("click", (e) => {
+  if(popover.classList.contains("open") && !popover.contains(e.target) &&
+     !e.target.closest("[data-editdept]") && e.target.id !== "newDeptBtn"){
+    closeDeptPopover();
+  }
+});
+document.getElementById("deptCustomAddBtn").addEventListener("click", addCustomDept);
+document.getElementById("deptCustomInput").addEventListener("keydown", (e) => {
+  if(e.key === "Enter"){ e.preventDefault(); addCustomDept(); }
+});
+function addCustomDept(){
+  const input = document.getElementById("deptCustomInput");
+  const val = input.value.trim();
+  if(!val) return;
+  if(!state.departments.includes(val)) state.departments.push(val);
+  input.value = "";
+  let sel = currentSelection().slice();
+  if(!sel.includes(val)) sel.push(val);
+  setSelection(sel);
+  renderPopoverList();
+}
+
+function renderNewDeptBtn(){
+  const btn = document.getElementById("newDeptBtn");
+  if(state.newTaskDepts.length === 0){
+    btn.innerHTML = `<span class="ph">부서 선택 ▾</span>`;
+  } else {
+    btn.innerHTML = state.newTaskDepts.map(d => `<span class="dept-chip" style="background:${deptColor(d)}22; color:${deptColor(d)}">${d}</span>`).join("");
+  }
+}
+document.getElementById("newDeptBtn").addEventListener("click", (e) => {
+  e.stopPropagation();
+  openDeptPopover(e.currentTarget, "new", null);
+});
+
+/* ============ 이벤트 ============ */
+document.getElementById("catToggle").addEventListener("click", (e) => {
+  const btn = e.target.closest("button");
+  if(!btn) return;
+  state.category = btn.dataset.cat;
+  document.querySelectorAll("#catToggle button").forEach(b => b.classList.toggle("active", b === btn));
+  renderStats();
+});
+
+document.getElementById("startDate").addEventListener("change", (e) => {
+  state.startDate = e.target.value || state.startDate;
+  renderAll();
+});
+
+document.getElementById("resetBtn").addEventListener("click", () => {
+  state.tasks = [];
+  state.error = null;
+  renderAll();
+});
+
+document.getElementById("addBtn").addEventListener("click", () => {
+  const name = document.getElementById("newName").value.trim();
+  const lead = Math.max(1, parseInt(document.getElementById("newLead").value) || 1);
+  if(!name){ return; }
+  state.tasks.push({
+    id: "t" + Date.now() + Math.random().toString(36).slice(2,7),
+    name,
+    departments: state.newTaskDepts.slice(),
+    leadTimeDays: lead,
+    category: state.category,
+    manualStartDate: null
+  });
+  document.getElementById("newName").value = "";
+  state.newTaskDepts = [];
+  renderNewDeptBtn();
+  renderAll();
+});
+
+document.getElementById("loadTplBtn").addEventListener("click", () => {
+  const tpl = TEMPLATES[state.category] || [];
+  tpl.forEach(row => {
+    (row[2] || []).forEach(d => { if(!state.departments.includes(d)) state.departments.push(d); });
+  });
+  state.tasks = tpl.map((row, i) => ({
+    id: "d" + Date.now() + i,
+    name: row[0],
+    departments: (row[2] || []).slice(),
+    leadTimeDays: row[1],
+    category: state.category,
+    manualStartDate: null,
+    startAfterName: (row[3] && row[3].startAfter) || null,
+    startWithName: (row[3] && row[3].startWith) || null
+  }));
+  state.error = null;
+  renderAll();
+});
+
+document.getElementById("saveImgBtn").addEventListener("click", async () => {
+  if(state.tasks.length === 0){ return; }
+  const target = document.getElementById("exportCapture");
+  const btn = document.getElementById("saveImgBtn");
+  const original = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = `<span class="spin" style="border-color: rgba(43,33,24,0.25); border-top-color: var(--text);"></span> 저장 중...`;
+  try{
+    const canvas = await html2canvas(target, {
+      backgroundColor: "#ffffff",
+      scale: 4,
+      useCORS: true
+    });
+    const link = document.createElement("a");
+    link.download = `EU_출시타임라인_${state.category}_${state.startDate}.png`;
+    link.href = canvas.toDataURL("image/png");
+    link.click();
+  } catch(err){
+    state.error = "이미지 저장에 실패했습니다. (" + err.message + ")";
+    renderError();
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = original;
+  }
+});
+
+renderNewDeptBtn();
+renderAll();
+</script>
+</body>
+</html>
